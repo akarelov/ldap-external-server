@@ -1,5 +1,9 @@
 package net.thumbtack.ldap.configuration;
 
+import net.thumbtack.ldap.domain.Role;
+import net.thumbtack.ldap.domain.User;
+import net.thumbtack.ldap.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.ldap.core.support.LdapContextSource;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -8,11 +12,15 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
-import java.util.ArrayList;
+import java.util.Arrays;
 
 @Component
 public class CustomAuthenticationProvider implements AuthenticationProvider {
     private LdapContextSource contextSource;
+
+    @Autowired
+    private UserRepository userRepository;
+
 
     @PostConstruct
     private void initContext() {
@@ -33,20 +41,14 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
         String password = authentication.getCredentials().toString();
         try {
             contextSource.getContext(name, password);
-            return new UsernamePasswordAuthenticationToken(name, password, new ArrayList<>());
+            userRepository.save(new User(name, password, Role.EMPLOYEE));
+            Role roles = userRepository.findById(name).getRole();
+            return new UsernamePasswordAuthenticationToken(name, password, Arrays.asList(roles));
         } catch (Exception e) {
             // Context creation failed - authentication did not succeed
             System.out.println("Login failed\n" + e);
         }
         return null;
-//        if (shouldAuthenticateAgainstThirdPartySystem()) {
-//             use the credentials
-//             and authenticate against the third-party system
-//            return new UsernamePasswordAuthenticationToken(
-//                    name, password, new ArrayList<>());
-//        } else {
-//            return null;
-//        }
     }
 
     @Override
